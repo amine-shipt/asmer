@@ -1,78 +1,83 @@
-<Doctype html>
-    <html>
-        <head>
-            <title>amine.sports</title>
-        </head>
-
-
-<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; flex-direction: column; text-align: center; height: 100vh; margin: 0; padding: 0; box-sizing: border-box;">
-
-    <!-- لائحة المباريات -->
-    <div style="display: flex; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 900px;">
-        <!-- مباراة 1 -->
-        <div onclick="showMatchDetails('برشلونة ضد ريال مدريد', 'اليوم الساعة 10:00 مساءً', 'http://free.one24tv.com:443/16001736681553/16001736681553/294', 'جاري الآن', 'https://upload.wikimedia.org/wikipedia/commons/4/47/FC_Barcelona_logo_%282019%29.svg', 'https://upload.wikimedia.org/wikipedia/commons/6/60/Real_Madrid_CF_logo.svg')" style="background-color: #2196F3; color: white; padding: 30px; border-radius: 15px; cursor: pointer; margin: 10px; text-align: center; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); transition: transform 0.3s ease, background-color 0.3s ease; width: 100%; max-width: 350px;">
-            <img src="https://a.top4top.io/p_3299ba2ae1.png" alt="برشلونة" style="width: 50px; height: 50px; margin-bottom: 10px;">
-            <img src="https://l.top4top.io/p_3299zv4v71.png" alt="ريال مدريد" style="width: 50px; height: 50px; margin-bottom: 10px;">
-            <div style="position: absolute; top: 10px; center: 10px; background-color: rgba(0, 0, 0, 0.5); padding: 5px 10px; border-radius: 5px;"> </div>
-            <h3>برشلونة ضد ريال مدريد</h3>
-            <div style="text-align: center; margin: 20px; padding: 10px; background-color: #4CAF50; color: white; font-size: 18px; font-weight: bold; border-radius: 5px; width: fit-content; cursor: pointer;">
-                بث مباشر
-            </div>
-        </div>
-    </div>
-
-    <!-- تفاصيل المباراة -->
-    <div id="matchDetails" style="display: none; text-align: center; margin-top: 20px;">
-        <h2 id="matchTitle" style="font-size: 24px; color: #333;"></h2>
-        <p id="matchTime" style="font-size: 18px; color: #777;"></p>
-        <button onclick="playMatch()" style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">شاهد المباراة</button>
-    </div>
-
-    <!-- مشغل الفيديو -->
-    <div class="video-container" id="videoContainer" style="display: none; margin-top: 20px; width: 100%; max-width: 800px;">
-        <video id="video" controls style="width: 100%; height: auto; border-radius: 10px;">
-            <p>لأسف، المتصفح الخاص بك لا يدعم تشغيل الفيديو.</p>
-        </video>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مشغل فيديو مع تعليق صوتي مباشر</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        video {
+            width: 80%;
+            max-width: 720px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>مشغل فيديو مع تعليق صوتي مباشر</h1>
+    <video id="videoPlayer" controls muted autoplay>
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        متصفحك لا يدعم تشغيل الفيديو.
+    </video>
+    <div>
+        <button onclick="startLiveCommentary()">ابدأ التعليق المباشر</button>
+        <button onclick="stopLiveCommentary()">إيقاف التعليق المباشر</button>
     </div>
 
     <script>
-        var currentVideoUrl = "";
+        const videoPlayer = document.getElementById('videoPlayer');
+        let audioContext, microphone, source, gainNode;
 
-        // عرض تفاصيل المباراة عند الضغط على الخانة
-        function showMatchDetails(title, time, videoUrl, status, teamLogo1, teamLogo2) {
-            document.getElementById("matchTitle").innerText = title;
-            document.getElementById("matchTime").innerText = time + ' - الحالة: ' + status;
-            document.getElementById("matchDetails").style.display = 'block';
-            document.getElementById("videoContainer").style.display = 'none';
-            currentVideoUrl = videoUrl;
+        // كتم صوت الفيديو تلقائيًا عند التشغيل
+        videoPlayer.muted = true;
+
+        // دالة لبدء التعليق الصوتي المباشر
+        async function startLiveCommentary() {
+            try {
+                // إنشاء AudioContext
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // طلب إذن استخدام الميكروفون
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // إنشاء مصدر الميكروفون
+                microphone = audioContext.createMediaStreamSource(stream);
+
+                // التحكم في مستوى الصوت
+                gainNode = audioContext.createGain();
+                gainNode.gain.value = 1; // التحكم في مستوى الصوت (1 يعني 100%)
+
+                // توصيل الميكروفون بمكبرات الصوت
+                microphone.connect(gainNode).connect(audioContext.destination);
+
+                alert("التعليق الصوتي المباشر قيد التشغيل!");
+            } catch (error) {
+                alert("حدث خطأ أثناء محاولة الوصول إلى الميكروفون: " + error.message);
+            }
         }
 
-        // دالة لتشغيل الفيديو
-        function playMatch() {
-            document.getElementById("matchDetails").style.display = 'none';
-            document.getElementById("videoContainer").style.display = 'block';
-            
-            var video = document.getElementById('video');
-            var videoSrc = currentVideoUrl;
-
-            // تحقق إذا كان المتصفح يدعم Hls.js
-            if (Hls.isSupported()) {
-                var hls = new Hls();
-                hls.loadSource(videoSrc);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                    video.play();
-                });
-            }
-            // إذا كان المتصفح يدعم <video> مباشرة
-            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = videoSrc;
-                video.addEventListener('loadedmetadata', function () {
-                    video.play();
-                });
+        // دالة لإيقاف التعليق الصوتي المباشر
+        function stopLiveCommentary() {
+            if (audioContext && audioContext.state !== "closed") {
+                audioContext.close();
+                alert("تم إيقاف التعليق الصوتي المباشر.");
             }
         }
     </script>
 </body>
-    </html>
-    
+</html>
