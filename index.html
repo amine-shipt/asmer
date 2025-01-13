@@ -1,83 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مشغل فيديو مع تعليق صوتي مباشر</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        video {
-            width: 80%;
-            max-width: 720px;
-            margin-bottom: 20px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 5px;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>بث مباشر مع التعليق</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    #video-container {
+      position: relative;
+      width: 80%;
+      margin: 20px auto;
+      max-width: 800px;
+    }
+    video {
+      width: 100%;
+      border-radius: 10px;
+    }
+    #controls {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #controls button, #controls input {
+      background: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #controls button:hover {
+      background: #ddd;
+    }
+    #admin-panel {
+      display: none;
+      margin: 20px auto;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-    <h1>مشغل فيديو مع تعليق صوتي مباشر</h1>
-    <video id="videoPlayer" controls muted autoplay>
-        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-        متصفحك لا يدعم تشغيل الفيديو.
+  <h1>مشغل بث مباشر مع التعليق</h1>
+
+  <div id="video-container">
+    <video id="video" controls autoplay>
+      <source src="https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4" type="video/mp4">
+      الفيديو غير مدعوم.
     </video>
-    <div>
-        <button onclick="startLiveCommentary()">ابدأ التعليق المباشر</button>
-        <button onclick="stopLiveCommentary()">إيقاف التعليق المباشر</button>
+    <div id="controls">
+      <input type="text" id="video-url" placeholder="أدخل رابط البث المباشر">
+      <button onclick="loadStream()">تحميل البث</button>
+      <button id="start-commentary" onclick="startCommentary()">ابدأ التعليق</button>
+      <button id="stop-commentary" onclick="stopCommentary()" disabled>إيقاف التعليق</button>
     </div>
+  </div>
 
-    <script>
-        const videoPlayer = document.getElementById('videoPlayer');
-        let audioContext, microphone, source, gainNode;
+  <div id="admin-panel">
+    <h2>لوحة التحكم الخاصة بالمعلق</h2>
+    <p id="status">الحالة: غير نشط</p>
+  </div>
 
-        // كتم صوت الفيديو تلقائيًا عند التشغيل
-        videoPlayer.muted = true;
+  <script>
+    const video = document.getElementById('video');
+    const startBtn = document.getElementById('start-commentary');
+    const stopBtn = document.getElementById('stop-commentary');
+    const status = document.getElementById('status');
 
-        // دالة لبدء التعليق الصوتي المباشر
-        async function startLiveCommentary() {
-            try {
-                // إنشاء AudioContext
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // تحميل رابط بث مباشر
+    function loadStream() {
+      const url = document.getElementById('video-url').value;
+      if (url) {
+        video.src = url;
+        video.load();
+        video.play();
+      } else {
+        alert('يرجى إدخال رابط البث المباشر.');
+      }
+    }
 
-                // طلب إذن استخدام الميكروفون
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // إعداد WebRTC للتعليق المباشر
+    let audioStream;
+    let mixedStream;
+    let mediaRecorder;
+    let audioContext;
 
-                // إنشاء مصدر الميكروفون
-                microphone = audioContext.createMediaStreamSource(stream);
+    function startCommentary() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(audio => {
+          audioStream = audio;
 
-                // التحكم في مستوى الصوت
-                gainNode = audioContext.createGain();
-                gainNode.gain.value = 1; // التحكم في مستوى الصوت (1 يعني 100%)
+          // إنشاء AudioContext لدمج الصوت والفيديو
+          audioContext = new AudioContext();
+          const audioSource = audioContext.createMediaStreamSource(audio);
+          const videoSource = audioContext.createMediaElementSource(video);
 
-                // توصيل الميكروفون بمكبرات الصوت
-                microphone.connect(gainNode).connect(audioContext.destination);
+          // إنشاء عقدة دمج الصوت والفيديو
+          const destination = audioContext.createMediaStreamDestination();
+          audioSource.connect(destination);
+          videoSource.connect(destination);
 
-                alert("التعليق الصوتي المباشر قيد التشغيل!");
-            } catch (error) {
-                alert("حدث خطأ أثناء محاولة الوصول إلى الميكروفون: " + error.message);
-            }
-        }
+          // بث الفيديو مع الصوت
+          mixedStream = destination.stream;
+          video.srcObject = mixedStream;
 
-        // دالة لإيقاف التعليق الصوتي المباشر
-        function stopLiveCommentary() {
-            if (audioContext && audioContext.state !== "closed") {
-                audioContext.close();
-                alert("تم إيقاف التعليق الصوتي المباشر.");
-            }
-        }
-    </script>
+          // تسجيل التعليق المباشر
+          mediaRecorder = new MediaRecorder(mixedStream);
+          mediaRecorder.start();
+
+          status.textContent = 'الحالة: جاري التعليق المباشر';
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+
+          mediaRecorder.ondataavailable = event => {
+            // تخزين التسجيل (إذا احتجت لاحقًا)
+          };
+        })
+        .catch(err => {
+          console.error('فشل الوصول إلى الميكروفون:', err);
+        });
+    }
+
+    function stopCommentary() {
+      mediaRecorder.stop();
+      audioStream.getTracks().forEach(track => track.stop());
+      status.textContent = 'الحالة: التعليق متوقف';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    // عرض أدوات التعليق فقط إذا كنت مسؤولًا
+    const isAdmin = true; // عدل هذا حسب الحالة
+    if (isAdmin) {
+      document.getElementById('admin-panel').style.display = 'block';
+    }
+  </script>
 </body>
 </html>
